@@ -1,0 +1,16 @@
+{
+  "name": "td-dummy-data-generator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.5.4",
+    "faker": "^2.1.5",
+    "lodash": "^3.10.0"
+  }
+}
