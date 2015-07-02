@@ -9,7 +9,8 @@ module.exports = function (url) {
     register: register,
     login: login,
     postCompany: postCompany,
-    putActivity: putActivity
+    putActivity: putActivity,
+    postInvitation: postInvitation
   }
 };
 
@@ -50,7 +51,6 @@ function postCompany(token, data) {
  * @returns {axios.Promise}
  */
 function putActivity(token, companyId, chunkId, data) {
-  console.log(arguments);
   return axios.put(
     apiUrl + '/activity/' + chunkId,
     // payload
@@ -62,8 +62,34 @@ function putActivity(token, companyId, chunkId, data) {
         debug: true
       }
     }
-  ).then(function(responce){
-      console.log(JSON.stringify(responce));
-    });
+  )
+    //.then(function(responce){
+    //  console.log(JSON.stringify(responce));
+    //});
+}
+
+/**
+ *
+ * @param token
+ * @param companyId
+ * @param data
+ * @returns {axios.Promise}
+ */
+function postInvitation(token, companyId, data) {
+  return axios.post(
+    apiUrl + '/invitations/',
+    // payload
+    data,
+    {
+      headers: {Authorization: 'JWT ' + token},
+      params: {
+        company: companyId,
+        debug: true
+      }
+    }
+  )
+    //.then(function(responce){
+    //  console.log(JSON.stringify(responce));
+    //});
 }
 
