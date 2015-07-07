@@ -1,5 +1,5 @@
 module.exports = {
-  apiUrl: 'https://td-rest-api.herokuapp.com/api/1.0',
+  apiUrl: process.env.TD_API_URL || 'https://td-rest-api.herokuapp.com/api/1.0',
   companies: [
     {
       usersAmount: 50,
