@@ -282,7 +282,10 @@ function generateActivity(user, days) {
       && (dateObj.getMinutes() < (60 - dateObj.getHours()) || !!(dateObj.getHours() % 2)))
     {
       // adding activity
-      results.push(library.putActivity(user.token, user.companyId, chunkId, _.sample(demoChunks)));
+      var randomChunk = _.sample(demoChunks);
+      randomChunk.worklogType = "task";
+
+      results.push(library.putActivity(user.token, user.companyId, chunkId, randomChunk));
     }
   });
   return Promise.all(results);
