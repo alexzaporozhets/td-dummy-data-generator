@@ -32,7 +32,7 @@ config.companies.forEach(function (payload) {
     .then(function (responce) {
       var results = [];
 
-      // inviting users
+      // let's invite people
       _.times(payload.usersAmount, function () {
 
         var newUser = generateUserIdentity();
