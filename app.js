@@ -7,6 +7,20 @@ var _ = require('lodash');
 var faker = require('faker');
 var config = require('./config');
 var library = require('./library')(config.apiUrl);
+var chalk = require('chalk');
+
+/**
+ * confirm API url
+ * @type {getYesNo}
+ */
+var query = require('cli-interact').getYesNo;
+var answer = query('current API url: ' + chalk.yellow(config.apiUrl) + ' - do you want to proceed?');
+if (!answer) {
+  console.log('ok, bye :)');
+  process.exit();
+}
+
+console.log('\nok, so dummy data will be generated for ' + chalk.green(config.apiUrl) + '\n');
 
 // FIRE
 config.companies.forEach(function (payload) {
