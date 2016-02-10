@@ -16,7 +16,8 @@ var chalk = require('chalk');
 var query = require('cli-interact').getYesNo;
 var answer = query('current API url: ' + chalk.yellow(config.apiUrl) + ' - do you want to proceed?');
 if (!answer) {
-  console.log('ok, bye :)');
+  console.log('ok, so please use TD_API_URL env parameter to set the API url you need');
+  console.log('bye :)');
   process.exit();
 }
 
@@ -28,6 +29,8 @@ config.companies.forEach(function (payload) {
   var ownerUser = generateUserIdentity();
   var managedUsers = [];
 
+  var workspaceCompanyId = '';
+
   // creating a user
   library.register(ownerUser)
     // login
@@ -35,29 +38,45 @@ config.companies.forEach(function (payload) {
       return library.login(ownerUser)
     })
     // add token into headers
-    // create a company
-    .then(function (responce) {
+    // create MAIN company
+    .then(function (response) {
       // todo: find a better way for it
-      ownerUser.token = responce.data.data.token;
-      return library.postCompany(ownerUser.token, {name: faker.company.companyName()}).then(function (responce) {
-        ownerUser.companyId = responce.data.data.id;
-      });
+      ownerUser.token = response.data.data.token;
+      return library
+        .postCompany(ownerUser.token, { name: faker.company.companyName() })
+        .then(function (response) {
+          ownerUser.companyId = response.data.data.id;
+        });
     })
-    .then(function (responce) {
+    .then(function () {
+      /**
+       * having main/root company, we can create first child company
+       * which will be also the first workspace
+       * and is needed to assign/invite users to it :)
+       * (main company is not workspace - it is only root - do not assign any employee to it!!)
+       */
+
+      return library
+        .postCompany(ownerUser.token, { name: ownerUser.name + 'workspace 1' }, ownerUser.companyId)
+        .then(function (response) {
+          workspaceCompanyId = response.data.data.id;
+        });
+    })
+    .then(function () {
       var results = [];
 
       // let's invite people
       _.times(payload.usersAmount, function () {
 
         var newUser = generateUserIdentity();
-        newUser.companyId = ownerUser.companyId;
+        newUser.companyId = workspaceCompanyId;
 
         results.push(
           library.register(newUser).then(function () {
-            return library.postInvitation(ownerUser.token, ownerUser.companyId, newUser).then(function () {
-              return library.login(newUser).then(function (responce) {
+            return library.postInvitation(ownerUser.token, workspaceCompanyId, newUser).then(function () {
+              return library.login(newUser).then(function (response) {
                 // apply token into the user
-                newUser.token = responce.data.data.token;
+                newUser.token = response.data.data.token;
                 return newUser;
               });
             })
@@ -65,24 +84,24 @@ config.companies.forEach(function (payload) {
       });
       return Promise.all(results);
     })
-    .then(function (responce) {
+    .then(function (response) {
 
       // owners activity
       console.log('generateActivity - ownerUser', ownerUser.email);
       var results = generateActivity(ownerUser, payload.activityDays);
 
       // managed activity
-      responce.forEach(function (user) {
+      response.forEach(function (user) {
         console.log('generateActivity - user', user.email);
         results.then(generateActivity(user, payload.activityDays));
       });
       return results;
     })
-    .then(function (responce) {
+    .then(function () {
       console.log(ownerUser);
     })
-    .catch(function (responce) {
-      console.log('error', responce, ownerUser)
+    .catch(function (response) {
+      console.log('error', response, ownerUser)
     });
 });
 

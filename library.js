@@ -36,9 +36,14 @@ function login(data) {
  *
  * @param token
  * @param data
+ * @param parentCompanyId
  * @returns {axios.Promise}
  */
-function postCompany(token, data) {
+function postCompany(token, data, parentCompanyId) {
+  if (parentCompanyId) {
+    return axios.post(apiUrl + '/companies?company=' + parentCompanyId, data, {headers: {Authorization: 'JWT ' + token}});
+  }
+
   return axios.post(apiUrl + '/companies', data, {headers: {Authorization: 'JWT ' + token}});
 }
 
