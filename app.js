@@ -56,15 +56,17 @@ config.companies.forEach(function (payload) {
 
       // owners activity
       results.push(generateActivity(ownerUser, payload.activityDays));
+      console.log('generateActivity - ownerUser', ownerUser.email);
 
       // managed activity
       responce.forEach(function (user) {
         results.push(generateActivity(user, payload.activityDays));
+        console.log('generateActivity - user', user.email);
       });
       return Promise.all(results);
     })
     .then(function (responce) {
-      console.log(ownerUser)
+      console.log(ownerUser, {'employees': responce.length});
     })
     .catch(function (responce) {
       console.log('error', responce, ownerUser)
