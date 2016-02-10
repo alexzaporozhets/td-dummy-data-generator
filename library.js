@@ -63,9 +63,9 @@ function putActivity(token, companyId, chunkId, data) {
       }
     }
   )
-    //.then(function(responce){
-    //  console.log(JSON.stringify(responce));
-    //});
+    .then(function(responce){
+      console.log(JSON.stringify(responce));
+    });
 }
 
 /**

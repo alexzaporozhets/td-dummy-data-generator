@@ -52,21 +52,20 @@ config.companies.forEach(function (payload) {
       return Promise.all(results);
     })
     .then(function (responce) {
-      var results = [];
 
       // owners activity
-      results.push(generateActivity(ownerUser, payload.activityDays));
       console.log('generateActivity - ownerUser', ownerUser.email);
+      var results = generateActivity(ownerUser, payload.activityDays);
 
       // managed activity
       responce.forEach(function (user) {
-        results.push(generateActivity(user, payload.activityDays));
         console.log('generateActivity - user', user.email);
+        results.then(generateActivity(user, payload.activityDays));
       });
-      return Promise.all(results);
+      return results;
     })
     .then(function (responce) {
-      console.log(ownerUser, {'employees': responce.length});
+      console.log(ownerUser);
     })
     .catch(function (responce) {
       console.log('error', responce, ownerUser)
@@ -260,7 +259,7 @@ function generateActivity(user, days) {
     }
   ];
 
-  var results = [];
+  var results = Promise.resolve();
   // todo: rewrite this crap
   // tomorrow midnight
   var startDate = new Date(new Date(new Date(new Date(new Date(new Date(new Date().getTime() + 24 * 60 * 60 * 1000).setMinutes(0)).setSeconds(0)).setMilliseconds(0)).setHours(0)));
@@ -287,8 +286,8 @@ function generateActivity(user, days) {
       var randomChunk = _.sample(demoChunks);
       randomChunk.worklogType = "task";
 
-      results.push(library.putActivity(user.token, user.companyId, chunkId, randomChunk));
+      results.then(library.putActivity(user.token, user.companyId, chunkId, randomChunk));
     }
   });
-  return Promise.all(results);
+  return results;
 }
