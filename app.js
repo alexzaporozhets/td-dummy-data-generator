@@ -120,7 +120,8 @@ function generateUserIdentity() {
   return {
     name: faker.name.findName(), // Rowan Nikolaus
     password: 'tester',
-    email: Date.now() + '-' + process.pid + '-' + faker.internet.email(), // Kassandra.Haley@erich.biz
+    // when emails are with '.dev' domain then mandrill is disabled and this is what we need here :)
+    email: Date.now() + '-' + process.pid + '-' + faker.internet.email().replace(/\.\w+$/, '.dev'),
     device: '3921iepodasdi0aidaospdkaodasdkad'
   }
 }
