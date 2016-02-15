@@ -343,7 +343,7 @@ function generateActivity(user, days) {
     }
   ];
 
-  var tomorrowMidnight = moment().add(1, 'days').hours(0).minutes(0).seconds(0).milliseconds(0);
+  var tomorrowMidnight = moment().add(5, 'days').hours(0).minutes(0).seconds(0).milliseconds(0);
 
   var timestampFrom = Number(tomorrowMidnight.unix() - days * 24 * 60 * 60);
   var timestampTo = Number(tomorrowMidnight.unix());

@@ -3,7 +3,7 @@ module.exports = {
   companies: [
     {
       usersAmount: 100,
-      activityDays: 5,
+      activityDays: 6,
       tasks: true
     }
   ]
