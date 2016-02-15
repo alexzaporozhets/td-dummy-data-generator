@@ -8,6 +8,7 @@ var faker = require('faker');
 var config = require('./config');
 var library = require('./library')(config.apiUrl);
 var chalk = require('chalk');
+var moment = require('moment');
 
 /**
  * confirm API url
@@ -23,87 +24,132 @@ if (!answer) {
 
 console.log('\nok, so dummy data will be generated for ' + chalk.green(config.apiUrl) + '\n');
 
+
+// redirect logs from console to the debug.log file
+var util = require('util');
+var fs = require('fs');
+var logFile = fs.createWriteStream(__dirname + '/debug.log', { flags: 'w' });
+var logStdout = process.stdout;
+console.log = function () {
+  logFile.write(util.format.apply(null, arguments) + '\n'); // log to file
+  logStdout.write(util.format.apply(null, arguments) + '\n'); // log to console
+};
+console.error = console.log;
+// /redirect logs from console to the debug.log file
+
 // FIRE
 config.companies.forEach(function (payload) {
-
-  var ownerUser = generateUserIdentity();
   var managedUsers = [];
 
   var workspaceCompanyId = '';
 
-  // creating a user
-  library.register(ownerUser)
-    // login
-    .then(function () {
-      return library.login(ownerUser)
+  var ownerUser = {};
+
+  generateUserIdentity()
+    .then(function (userIdentity) {
+      ownerUser = userIdentity;
     })
-    // add token into headers
-    // create MAIN company
-    .then(function (response) {
-      // todo: find a better way for it
-      ownerUser.token = response.data.data.token;
-      return library
-        .postCompany(ownerUser.token, { name: faker.company.companyName() })
+    .then(function () {
+      // creating a user
+      library.register(ownerUser)
+        // login
+        .then(function () {
+          return library.login(ownerUser)
+        })
+        // add token into headers
+        // create MAIN company
         .then(function (response) {
-          ownerUser.companyId = response.data.data.id;
+          // todo: find a better way for it
+          ownerUser.token = response.data.data.token;
+
+          return library
+            .postCompany(ownerUser.token, { name: faker.company.companyName() })
+            .then(function (response) {
+              ownerUser.companyId = response.data.data.id;
+            });
+        })
+        .then(function () {
+          /**
+           * having main/root company, we can create first child company
+           * which will be also the first workspace
+           * and is needed to assign/invite users to it :)
+           * (main company is not workspace - it is only root - do not assign any employee to it!!)
+           */
+
+          return library
+            .postCompany(ownerUser.token, { name: ownerUser.name + 'workspace 1' }, ownerUser.companyId)
+            .then(function (response) {
+              workspaceCompanyId = response.data.data.id;
+            });
+        })
+        .then(function () {
+          var promiseSequences = [];
+          var userIdentitySequence = Promise.resolve();
+
+          var range = _.range(1, payload.usersAmount, 1);
+
+          // create managed users (register and invite)
+          range.forEach(function () {
+            var newUser = null;
+            userIdentitySequence = new Promise(
+              function (innerResolve) {
+                generateUserIdentity()
+                  .then(function (userIdentity) {
+                    newUser = userIdentity;
+                    newUser.companyId = workspaceCompanyId;
+                  })
+                  .then(function () {
+                    library
+                      .register(newUser)
+                      .then(function () {
+                        library
+                          .postInvitation(ownerUser.token, workspaceCompanyId, newUser)
+                          .then(function () {
+                            library
+                              .login(newUser)
+                              .then(function (response) {
+                                // apply token into the user
+                                newUser.token = response.data.data.token;
+
+                                managedUsers.push(newUser);
+
+                                innerResolve();
+                              })
+                          });
+                      })
+                  });
+            });
+
+            promiseSequences.push(userIdentitySequence);
+          });
+
+          return Promise.all(promiseSequences);
+        })
+        .then(function () {
+          var sequenceUser = Promise.resolve();
+
+          // owners activity
+          console.log('generateActivity - ownerUser', ownerUser.email);
+          sequenceUser = generateActivity(ownerUser, payload.activityDays);
+
+          // managed activity
+          managedUsers.forEach(function (user) {
+            console.log('generateActivity - user', user.email);
+            sequenceUser = sequenceUser.then(function () {
+              return generateActivity(user, payload.activityDays);
+            });
+          });
+
+          return sequenceUser;
+        })
+        .then(function () {
+          console.log('ownerUser', ownerUser);
+        })
+        .catch(function (response) {
+          console.log('error', response, ownerUser)
         });
-    })
-    .then(function () {
-      /**
-       * having main/root company, we can create first child company
-       * which will be also the first workspace
-       * and is needed to assign/invite users to it :)
-       * (main company is not workspace - it is only root - do not assign any employee to it!!)
-       */
-
-      return library
-        .postCompany(ownerUser.token, { name: ownerUser.name + 'workspace 1' }, ownerUser.companyId)
-        .then(function (response) {
-          workspaceCompanyId = response.data.data.id;
-        });
-    })
-    .then(function () {
-      var results = [];
-
-      // let's invite people
-      _.times(payload.usersAmount, function () {
-
-        var newUser = generateUserIdentity();
-        newUser.companyId = workspaceCompanyId;
-
-        results.push(
-          library.register(newUser).then(function () {
-            return library.postInvitation(ownerUser.token, workspaceCompanyId, newUser).then(function () {
-              return library.login(newUser).then(function (response) {
-                // apply token into the user
-                newUser.token = response.data.data.token;
-                return newUser;
-              });
-            })
-          }));
       });
-      return Promise.all(results);
-    })
-    .then(function (response) {
-
-      // owners activity
-      console.log('generateActivity - ownerUser', ownerUser.email);
-      var results = generateActivity(ownerUser, payload.activityDays);
-
-      // managed activity
-      response.forEach(function (user) {
-        console.log('generateActivity - user', user.email);
-        results.then(generateActivity(user, payload.activityDays));
-      });
-      return results;
-    })
-    .then(function () {
-      console.log(ownerUser);
-    })
-    .catch(function (response) {
-      console.log('error', response, ownerUser)
     });
-});
 
 
 var getIndexBelowMaxForKey = function(str, max){
@@ -117,13 +163,17 @@ var getIndexBelowMaxForKey = function(str, max){
 };
 
 function generateUserIdentity() {
-  return {
-    name: faker.name.findName(), // Rowan Nikolaus
-    password: 'tester',
-    // when emails are with '.dev' domain then mandrill is disabled and this is what we need here :)
-    email: Date.now() + '-' + process.pid + '-' + faker.internet.email().replace(/\.\w+$/, '.dev'),
-    device: '3921iepodasdi0aidaospdkaodasdkad'
-  }
+  return new Promise(function (resolve) {
+    resolve(
+      {
+        name: faker.name.findName(), // Rowan Nikolaus
+        password: 'tester',
+        // when emails are with '.dev' domain then mandrill is disabled and this is what we need here :)
+        email: Date.now() + '-' + process.pid + '-' + faker.internet.email().replace(/\.\w+$/, '.dev'),
+        device: '3921iepodasdi0aidaospdkaodasdkad'
+      }
+    )
+  });
 }
 
 
@@ -293,15 +343,21 @@ function generateActivity(user, days) {
     }
   ];
 
-  var results = Promise.resolve();
-  // todo: rewrite this crap
-  // tomorrow midnight
-  var startDate = new Date(new Date(new Date(new Date(new Date(new Date(new Date().getTime() + 24 * 60 * 60 * 1000).setMinutes(0)).setSeconds(0)).setMilliseconds(0)).setHours(0)));
+  var tomorrowMidnight = moment().add(1, 'days').hours(0).minutes(0).seconds(0).milliseconds(0);
+
+  var timestampFrom = Number(tomorrowMidnight.unix() - days * 24 * 60 * 60);
+  var timestampTo = Number(tomorrowMidnight.unix());
+
+  var timeRange = _.range(timestampFrom, timestampTo, 180);
 
   // 30 days * 24h hours * 60 min * 60 seconds = 14400 chunks per month
-  _.range(startDate - days * 24 * 60 * 60 * 1000, startDate, 180 * 1000).forEach(function (timestamp) {
+  var sequence = Promise.resolve();
 
-    var dateObj = new Date(timestamp);
+  var savedActivitiesCount = 0;
+  var errorsCount = 0;
+
+  timeRange.forEach(function (timestamp) {
+    var dateObj = new Date(timestamp * 1000);
     var chunkId = dateObj.toISOString().substr(0, 17) + '00Z';
 
     // todo: refactor
@@ -314,14 +370,33 @@ function generateActivity(user, days) {
     if (_.inRange(dateObj.getHours(), startHour, finishHour)
       && [rand, rand - 5, rand - 7].indexOf(dateObj.getHours()) === -1
       && (dateObj.getMinutes() > rand || !!(dateObj.getHours() % 2))
-      && (dateObj.getMinutes() < (60 - dateObj.getHours()) || !!(dateObj.getHours() % 2)))
-    {
+      && (dateObj.getMinutes() < (60 - dateObj.getHours()) || !!(dateObj.getHours() % 2))
+    ) {
       // adding activity
       var randomChunk = _.sample(demoChunks);
       randomChunk.worklogType = "task";
 
-      results.then(library.putActivity(user.token, user.companyId, chunkId, randomChunk));
+      sequence = library.putActivity(user.token, user.companyId, chunkId, randomChunk)
+        .then(function () {
+          savedActivitiesCount++;
+
+          return library.sleep(300);
+        })
+        .catch(function (err) {
+          errorsCount++;
+
+          return library.sleep(300);
+        });
     }
   });
-  return results;
+
+  return sequence.then(function () {
+    console.log('');
+    console.log('************************************************************************************');
+    console.log('user', user.name, '| savedActivitiesCount', savedActivitiesCount, ' | errorsCount', errorsCount);
+    console.log('************************************************************************************');
+    console.log('');
+
+    return library.sleep(1000);
+  });
 }

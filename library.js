@@ -10,12 +10,12 @@ module.exports = function (url) {
     login: login,
     postCompany: postCompany,
     putActivity: putActivity,
-    postInvitation: postInvitation
+    postInvitation: postInvitation,
+    sleep: sleep
   }
 };
 
 /**
- *
  * @param data
  * @returns {axios.Promise}
  */
@@ -24,7 +24,6 @@ function register(data) {
 }
 
 /**
- *
  * @param data
  * @returns {axios.Promise}
  */
@@ -33,7 +32,6 @@ function login(data) {
 }
 
 /**
- *
  * @param token
  * @param data
  * @param parentCompanyId
@@ -48,7 +46,6 @@ function postCompany(token, data, parentCompanyId) {
 }
 
 /**
- *
  * @param token
  * @param companyId
  * @param chunkId
@@ -56,45 +53,49 @@ function postCompany(token, data, parentCompanyId) {
  * @returns {axios.Promise}
  */
 function putActivity(token, companyId, chunkId, data) {
-  return axios.put(
-    apiUrl + '/activity/' + chunkId,
-    // payload
-    data,
-    {
-      headers: {Authorization: 'JWT ' + token},
-      params: {
-        company: companyId,
-        debug: true
+  return axios
+    .put(
+      apiUrl + '/activity/' + chunkId,
+      // payload
+      data,
+      {
+        headers: {Authorization: 'JWT ' + token},
+        params: {
+          company: companyId,
+          debug: true
+        }
       }
-    }
-  )
-    .then(function(responce){
-      console.log(JSON.stringify(responce));
-    });
+    );
 }
 
 /**
- *
  * @param token
  * @param companyId
  * @param data
  * @returns {axios.Promise}
  */
 function postInvitation(token, companyId, data) {
-  return axios.post(
-    apiUrl + '/invitations/',
-    // payload
-    data,
-    {
-      headers: {Authorization: 'JWT ' + token},
-      params: {
-        company: companyId,
-        debug: true
+  return axios
+    .post(
+      apiUrl + '/invitations/',
+      // payload
+      data,
+      {
+        headers: {Authorization: 'JWT ' + token},
+        params: {
+          company: companyId,
+          debug: true
+        }
       }
-    }
-  )
-    //.then(function(responce){
-    //  console.log(JSON.stringify(responce));
-    //});
+    );
 }
 
+function sleep(timeout) {
+  return new Promise(
+    function (resolve) {
+      setTimeout(function () {
+        resolve();
+      }, timeout);
+    }
+  );
+}
