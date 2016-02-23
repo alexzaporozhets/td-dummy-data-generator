@@ -130,13 +130,13 @@ config.companies.forEach(function (payload) {
 
           // owners activity
           console.log('generateActivity - ownerUser', ownerUser.email);
-          sequenceUser = generateActivity(ownerUser, payload.activityDays);
+          sequenceUser = generateActivity(ownerUser, payload.activityDays, payload.daysForward);
 
           // managed activity
           managedUsers.forEach(function (user) {
             console.log('generateActivity - user', user.email);
             sequenceUser = sequenceUser.then(function () {
-              return generateActivity(user, payload.activityDays);
+              return generateActivity(user, payload.activityDays, payload.daysForward);
             });
           });
 
@@ -177,7 +177,7 @@ function generateUserIdentity() {
 }
 
 
-function generateActivity(user, days) {
+function generateActivity(user, activityDays, daysForward) {
 
   var demoChunks = [
     {
@@ -343,10 +343,10 @@ function generateActivity(user, days) {
     }
   ];
 
-  var tomorrowMidnight = moment().add(5, 'days').hours(0).minutes(0).seconds(0).milliseconds(0);
+  var dateForward = moment().add(daysForward, 'days').hours(0).minutes(0).seconds(0).milliseconds(0);
 
-  var timestampFrom = Number(tomorrowMidnight.unix() - days * 24 * 60 * 60);
-  var timestampTo = Number(tomorrowMidnight.unix());
+  var timestampFrom = Number(dateForward.unix() - activityDays * 24 * 60 * 60);
+  var timestampTo = Number(dateForward.unix());
 
   var timeRange = _.range(timestampFrom, timestampTo, 180);
 
